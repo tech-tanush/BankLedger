@@ -180,7 +180,7 @@ copy .env.example .env
 Open `Backend/.env` and supply your variables:
 ```env
 PORT=3000
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/bankledger?retryWrites=true&w=majority
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/banking_ledger_system?retryWrites=true&w=majority
 JWT_SECRET=your_super_secret_jwt_key_minimum_32_characters
 CORS_ORIGIN=http://localhost:5173
 

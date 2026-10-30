@@ -7,7 +7,9 @@ async function connectToDB() {
   }
 
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI, {
+      dbName: process.env.DB_NAME || "banking_ledger_system",
+    });
     console.log("Connected to MongoDB database successfully");
   } catch (err) {
     console.error("Failed to connect to MongoDB database:", err.message);
