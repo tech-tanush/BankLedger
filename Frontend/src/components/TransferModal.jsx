@@ -16,6 +16,8 @@ import {
   User,
   Search,
   Check,
+  Timer,
+  RotateCw,
 } from "lucide-react";
 
 export default function TransferModal({
@@ -33,6 +35,9 @@ export default function TransferModal({
   const [step, setStep] = useState("form"); // "form" | "otp" | "processing" | "success"
   const [error, setError] = useState("");
   const [successData, setSuccessData] = useState(null);
+  const [otpSecondsLeft, setOtpSecondsLeft] = useState(60);
+  const [isResending, setIsResending] = useState(false);
+  const [resendFeedback, setResendFeedback] = useState("");
 
   // Recipient Lookup State
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -40,6 +45,26 @@ export default function TransferModal({
 
   // Settlement animation state
   const [settlementStage, setSettlementStage] = useState(0);
+
+  // 1-minute (60 seconds) OTP countdown timer
+  useEffect(() => {
+    let interval = null;
+    if (step === "otp") {
+      setOtpSecondsLeft(60);
+      interval = setInterval(() => {
+        setOtpSecondsLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [step]);
 
   const settlementStages = [
     {
@@ -75,6 +100,9 @@ export default function TransferModal({
     setSettlementStage(0);
     setLookupResult(null);
     setLookupLoading(false);
+    setOtpSecondsLeft(60);
+    setIsResending(false);
+    setResendFeedback("");
   };
 
   useEffect(() => {
@@ -214,10 +242,41 @@ export default function TransferModal({
     }
   };
 
+  const handleResendOtp = async () => {
+    const numAmount = Number(amount);
+    const targetAccountId = toAccount || recipientInput.trim();
+    if (!targetAccountId || !numAmount) return;
+
+    try {
+      setIsResending(true);
+      setError("");
+      await API.post("/api/transactions/request-otp", {
+        amount: numAmount,
+        toAccount: targetAccountId,
+      });
+      setOtp("");
+      setOtpSecondsLeft(60);
+      setResendFeedback("New 60-second authorization code sent!");
+      setTimeout(() => setResendFeedback(""), 4000);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to resend authorization code"
+      );
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleVerifyOtp = (e) => {
     e.preventDefault();
     if (!otp.trim()) {
       setError("Please enter the 6-digit verification code");
+      return;
+    }
+    if (otpSecondsLeft === 0) {
+      setError("Authorization code has expired (1 minute limit). Please click 'Resend Code'.");
       return;
     }
     const targetAccountId = toAccount || recipientInput.trim();
@@ -487,6 +546,63 @@ export default function TransferModal({
                 />
               </div>
 
+              {/* 1-Minute Live Countdown Timer & Resend Option */}
+              <div className="flex items-center justify-between text-xs px-1">
+                <div className="flex items-center gap-1.5">
+                  <Timer
+                    className={`h-3.5 w-3.5 ${
+                      otpSecondsLeft === 0
+                        ? "text-red-500"
+                        : otpSecondsLeft <= 15
+                        ? "text-amber-500 animate-pulse"
+                        : "text-[#5A6B7C] dark:text-[#94A3B8]"
+                    }`}
+                  />
+                  <span
+                    className={`font-mono font-semibold ${
+                      otpSecondsLeft === 0
+                        ? "text-red-500 font-bold"
+                        : otpSecondsLeft <= 15
+                        ? "text-amber-500 font-bold"
+                        : "text-[#5A6B7C] dark:text-[#94A3B8]"
+                    }`}
+                  >
+                    {otpSecondsLeft === 0
+                      ? "Code Expired (1m limit)"
+                      : `Expires in 00:${otpSecondsLeft < 10 ? `0${otpSecondsLeft}` : otpSecondsLeft}`}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={otpSecondsLeft > 0 || isResending}
+                  onClick={handleResendOtp}
+                  className={`text-xs font-semibold flex items-center gap-1 transition-colors ${
+                    otpSecondsLeft === 0
+                      ? "text-[#365C85] dark:text-[#8EB0D4] hover:underline cursor-pointer"
+                      : "text-[#94A3B8] dark:text-[#64748B] cursor-not-allowed opacity-50"
+                  }`}
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCw className="h-3 w-3" />
+                      <span>Resend Code</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {resendFeedback && (
+                <div className="text-center text-xs font-medium text-emerald-600 dark:text-emerald-400 py-0.5">
+                  {resendFeedback}
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
@@ -497,7 +613,10 @@ export default function TransferModal({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold theme-btn-gradient text-white transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                  disabled={otpSecondsLeft === 0}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold theme-btn-gradient text-white transition-colors shadow-xs flex items-center justify-center gap-1.5 ${
+                    otpSecondsLeft === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                  }`}
                 >
                   <ShieldCheck className="h-4 w-4" />
                   Verify & Settle

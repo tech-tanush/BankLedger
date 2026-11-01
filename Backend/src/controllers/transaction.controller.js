@@ -510,7 +510,7 @@ async function requestTransferOtp(req, res, next) {
 
     // Generate 6-digit numeric OTP
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const expiresAt = new Date(Date.now() + 1 * 60 * 1000); // 1 minute validity
 
     // Delete existing OTPs for this user and create new
     await otpModel.deleteMany({ userId: req.user._id });

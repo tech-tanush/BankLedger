@@ -163,7 +163,7 @@ async function sendTransferOtpEmail(userEmail, name, otp, amount, recipientName,
   const maskedTo = maskAccountId(toAccountId);
   const formattedAmount = Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 });
   const subject = `BankLedger Security: OTP for ₹${formattedAmount} Transfer`;
-  const text = `Hello ${name},\n\nYour one-time authorization code for sending ₹${formattedAmount} to ${recipientName || "Recipient"} (${maskedTo}) is:\n\n${otp}\n\nValid for 5 minutes. Do not share.`;
+  const text = `Hello ${name},\n\nYour one-time authorization code for sending ₹${formattedAmount} to ${recipientName || "Recipient"} (${maskedTo}) is:\n\n${otp}\n\nValid for 1 minute. Do not share.`;
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #0f172a; max-width: 500px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff;">
       <div style="margin-bottom: 16px;">
@@ -173,7 +173,7 @@ async function sendTransferOtpEmail(userEmail, name, otp, amount, recipientName,
       <p style="font-size: 13px; color: #334155; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
       <p style="font-size: 13px; color: #334155; line-height: 1.5;">A high-value transfer of <strong>₹ ${formattedAmount}</strong> to <strong>${recipientName || "Recipient"}</strong> (Account ${maskedTo}) requires your authorization.</p>
       <div style="background: #0f172a; padding: 18px 24px; border-radius: 10px; font-size: 28px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; text-align: center; margin: 20px 0;">${otp}</div>
-      <p style="font-size: 12px; color: #64748b;">This code expires in <strong>5 minutes</strong>. Never disclose this code to anyone.</p>
+      <p style="font-size: 12px; color: #64748b;">This code expires in <strong>1 minute</strong>. Never disclose this code to anyone.</p>
     </div>`;
   await sendEmail(userEmail, subject, text, html);
 }
