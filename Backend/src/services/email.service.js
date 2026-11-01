@@ -10,15 +10,19 @@ if (cleanEmailUser && cleanEmailPass) {
   console.log(`Email service: Initializing with user=${cleanEmailUser}, pass=[${cleanEmailPass.length} chars]`);
   transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false, // Use STARTTLS on port 587 (port 465 is blocked on Render free tier)
     auth: {
       user: cleanEmailUser,
       pass: cleanEmailPass,
     },
     tls: {
       rejectUnauthorized: false,
+      ciphers: "SSLv3",
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 
   transporter.verify((error) => {
