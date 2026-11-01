@@ -1,5 +1,8 @@
+const dns = require("node:dns");
+
+dns.setServers(["10.42.145.230", "8.8.8.8"]);
+
 require("dotenv").config();
-const dns = require("dns");
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder("ipv4first");
 }
