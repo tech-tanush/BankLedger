@@ -7,33 +7,31 @@ const cleanEmailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/
 let transporter = null;
 
 if (cleanEmailUser && cleanEmailPass) {
-  console.log(`Email service: Initializing with user=${cleanEmailUser}, pass=[${cleanEmailPass.length} chars]`);
+  console.log(`Email service: Initializing — user=${cleanEmailUser}`);
   transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
-    secure: false, // Use STARTTLS on port 587 (port 465 is blocked on Render free tier)
+    secure: false,
     auth: {
       user: cleanEmailUser,
       pass: cleanEmailPass,
     },
     tls: {
       rejectUnauthorized: false,
-      ciphers: "SSLv3",
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
 
-  transporter.verify((error) => {
-    if (error) {
-      console.error("❌ Email service FAILED to connect:", error.message);
-    } else {
-      console.log("✅ Email service: Connected to Gmail SMTP. Ready to send.");
-    }
-  });
+  // Non-blocking verify — log result but don't halt startup
+  transporter.verify()
+    .then(() => console.log("✅ Email service: Gmail SMTP verified. Ready to send."))
+    .catch((err) => {
+      console.error("⚠️ Email verify failed (emails may still send):", err.message);
+    });
 } else {
-  console.warn(`⚠️ Email service DISABLED: EMAIL_USER=${cleanEmailUser || "MISSING"}, EMAIL_PASS=${cleanEmailPass ? "SET" : "MISSING"}`);
+  console.warn(`⚠️ Email service DISABLED — EMAIL_USER=${cleanEmailUser || "MISSING"}, EMAIL_PASS=${cleanEmailPass ? "SET" : "MISSING"}`);
 }
 
 const sendEmail = async (to, subject, text, html) => {
