@@ -3,10 +3,16 @@ const mongoose = require("mongoose");
 const app = require("./src/app");
 const connectToDB = require("./src/config/db");
 
-// Verify required runtime environment variables
-if (!process.env.JWT_SECRET) {
-  console.warn("WARNING: JWT_SECRET environment variable is missing. Authentication may fail.");
-}
+// Startup environment variable diagnostics
+console.log("=== BankLedger Startup Diagnostics ===");
+console.log("NODE_ENV      :", process.env.NODE_ENV || "(not set)");
+console.log("PORT          :", process.env.PORT || "(not set, will use 3000)");
+console.log("JWT_SECRET    :", process.env.JWT_SECRET ? `[SET - ${process.env.JWT_SECRET.length} chars]` : "❌ MISSING");
+console.log("MONGO_URI     :", process.env.MONGO_URI ? "[SET]" : "❌ MISSING");
+console.log("CORS_ORIGIN   :", process.env.CORS_ORIGIN || "(not set)");
+console.log("EMAIL_USER    :", process.env.EMAIL_USER || "❌ MISSING");
+console.log("EMAIL_PASS    :", process.env.EMAIL_PASS ? `[SET - ${process.env.EMAIL_PASS.replace(/\s+/g, "").length} chars]` : "❌ MISSING");
+console.log("======================================");
 
 const PORT = process.env.PORT || 3000;
 
