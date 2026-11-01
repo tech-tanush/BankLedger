@@ -1,4 +1,10 @@
+const dns = require("dns");
 const nodemailer = require("nodemailer");
+
+// Force IPv4 DNS resolution across Node to prevent ENETUNREACH on cloud hosts without IPv6
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 // Clean credentials from env
 const cleanEmailUser = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : "";
@@ -12,6 +18,7 @@ if (cleanEmailUser && cleanEmailPass) {
     host: "smtp.gmail.com",
     port: 587,
     secure: false,
+    family: 4, // Explicitly force IPv4 connection to prevent IPv6 ENETUNREACH on Render
     auth: {
       user: cleanEmailUser,
       pass: cleanEmailPass,
@@ -19,9 +26,9 @@ if (cleanEmailUser && cleanEmailPass) {
     tls: {
       rejectUnauthorized: false,
     },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
 
   // Non-blocking verify — log result but don't halt startup

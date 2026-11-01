@@ -1,4 +1,8 @@
 require("dotenv").config();
+const dns = require("dns");
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
 const nodemailer = require("nodemailer");
 
 async function runDirectDiagnostics() {
@@ -22,14 +26,23 @@ async function runDirectDiagnostics() {
     console.warn(`⚠️ Warning: Google App Passwords are normally exactly 16 characters. Yours has ${cleanPass.length} characters.`);
   }
 
-  console.log("\n3. Testing connection to Gmail SMTP (smtp.gmail.com:465)...");
+  console.log("\n3. Testing connection to Gmail SMTP (smtp.gmail.com:587 with IPv4)...");
 
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    family: 4,
     auth: {
       user: user,
       pass: cleanPass,
     },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
 
   try {
