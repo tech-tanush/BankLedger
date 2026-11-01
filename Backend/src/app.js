@@ -10,10 +10,42 @@ const transactionRoutes = require("./routes/transaction.routes");
 const app = express();
 
 // Global Middleware
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+if (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== "*") {
+  process.env.CORS_ORIGIN.split(",").forEach((item) => {
+    const trimmed = item.trim().replace(/\/$/, "");
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || true,
+    origin: (origin, callback) => {
+      // Allow non-browser requests (mobile, server-to-server, curl)
+      if (!origin) return callback(null, true);
+
+      const cleanOrigin = origin.replace(/\/$/, "");
+
+      if (
+        !process.env.CORS_ORIGIN ||
+        process.env.CORS_ORIGIN === "*" ||
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(null, true);
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   }),
 );
 app.use(express.json());
