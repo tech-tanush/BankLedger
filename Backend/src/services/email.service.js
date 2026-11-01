@@ -2,13 +2,16 @@ const nodemailer = require("nodemailer");
 
 let transporter = null;
 
+// Clean up any accidental spaces from Google App Password (e.g. "abcd efgh ijkl mnop" -> "abcdefghijklmnop")
+const cleanEmailUser = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : "";
+const cleanEmailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, "") : "";
+
 // 1. Direct App Password (Permanent, never expires after 7 days)
-const hasAppPasswordConfig =
-  Boolean(process.env.EMAIL_USER) && Boolean(process.env.EMAIL_PASS);
+const hasAppPasswordConfig = Boolean(cleanEmailUser) && Boolean(cleanEmailPass);
 
 // 2. Google OAuth2 (Requires Google Cloud project set to "In Production" to avoid 7-day expiry)
 const hasOAuth2Config =
-  Boolean(process.env.EMAIL_USER) &&
+  Boolean(cleanEmailUser) &&
   Boolean(process.env.CLIENT_ID) &&
   Boolean(process.env.CLIENT_SECRET) &&
   Boolean(process.env.REFRESH_TOKEN);
@@ -17,8 +20,8 @@ if (hasAppPasswordConfig) {
   transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: cleanEmailUser,
+      pass: cleanEmailPass,
     },
   });
 } else if (hasOAuth2Config) {
@@ -26,20 +29,25 @@ if (hasAppPasswordConfig) {
     service: "gmail",
     auth: {
       type: "OAuth2",
-      user: process.env.EMAIL_USER,
+      user: cleanEmailUser,
       clientId: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
       refreshToken: process.env.REFRESH_TOKEN,
     },
   });
+} else {
+  console.warn("⚠️ Email service: EMAIL_USER and EMAIL_PASS are missing in environment variables. Email notifications will be skipped.");
 }
 
 if (transporter) {
   transporter.verify((error) => {
     if (error) {
-      console.warn("Email service warning: unable to connect to SMTP server:", error.message);
+      console.error("❌ Email service error: unable to authenticate with Gmail SMTP server:", error.message);
+      if (error.message.includes("BadCredentials") || error.message.includes("535")) {
+        console.error("👉 Tip: Verify that EMAIL_PASS is a 16-character Google App Password (not your normal Gmail login password).");
+      }
     } else {
-      console.log("Email server is ready to send messages");
+      console.log("✅ Email service: Connected to Gmail SMTP server. Ready to dispatch emails.");
     }
   });
 }
@@ -47,21 +55,22 @@ if (transporter) {
 // Function to send email safely
 const sendEmail = async (to, subject, text, html) => {
   if (!transporter) {
+    console.warn(`⚠️ Cannot send email to ${to}: Email transporter is not initialized. Check EMAIL_USER and EMAIL_PASS on your server.`);
     return;
   }
 
   try {
     const info = await transporter.sendMail({
-      from: `"BankLedger" <${process.env.EMAIL_USER}>`,
+      from: `"BankLedger" <${cleanEmailUser}>`,
       to,
       subject,
       text,
       html,
     });
 
-    console.log("Email dispatched to %s: %s", to, info.messageId);
+    console.log("📧 Email successfully dispatched to %s: %s", to, info.messageId);
   } catch (error) {
-    console.error("Error sending email to %s:", to, error.message);
+    console.error("❌ Error sending email to %s:", to, error.message);
   }
 };
 
