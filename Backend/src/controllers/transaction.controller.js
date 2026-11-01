@@ -183,36 +183,46 @@ async function createTransaction(req, res, next) {
 
     await session.commitTransaction();
 
-    // Async email notification to Sender (Debit alert)
+    // Dispatch Debit & Credit email alerts and ensure network socket completes before closing HTTP response
+    const emailPromises = [];
+
     if (req.user?.email) {
-      emailService
-        .sendTransactionEmail(
-          req.user.email,
-          req.user.name || "Customer",
-          Number(amount),
-          toUserAccount?.user?.name || "Recipient",
-          toAccount,
-          transaction._id,
-        )
-        .catch((emailErr) => {
-          console.error("Sender debit email failed:", emailErr.message);
-        });
+      emailPromises.push(
+        emailService
+          .sendTransactionEmail(
+            req.user.email,
+            req.user.name || "Customer",
+            Number(amount),
+            toUserAccount?.user?.name || "Recipient",
+            toAccount,
+            transaction._id,
+          )
+          .catch((emailErr) => {
+            console.error("Sender debit email failed:", emailErr.message);
+          }),
+      );
     }
 
-    // Async email notification to Receiver (Credit alert)
     if (toUserAccount?.user?.email) {
-      emailService
-        .sendCreditAlertEmail(
-          toUserAccount.user.email,
-          toUserAccount.user.name || "Customer",
-          Number(amount),
-          req.user.name || "Sender",
-          fromAccount,
-          transaction._id,
-        )
-        .catch((emailErr) => {
-          console.error("Receiver credit email failed:", emailErr.message);
-        });
+      emailPromises.push(
+        emailService
+          .sendCreditAlertEmail(
+            toUserAccount.user.email,
+            toUserAccount.user.name || "Customer",
+            Number(amount),
+            req.user.name || "Sender",
+            fromAccount,
+            transaction._id,
+          )
+          .catch((emailErr) => {
+            console.error("Receiver credit email failed:", emailErr.message);
+          }),
+      );
+    }
+
+    // Await all email promises to settle so cloud container does not cut off SMTP connection
+    if (emailPromises.length > 0) {
+      await Promise.allSettled(emailPromises);
     }
 
     return res.status(201).json({
@@ -520,20 +530,23 @@ async function requestTransferOtp(req, res, next) {
       }
     }
 
-    // Send async email notification
+    // Dispatch OTP email and await transmission so SMTP socket completes
     if (req.user?.email) {
-      emailService
-        .sendTransferOtpEmail(
+      try {
+        await emailService.sendTransferOtpEmail(
           req.user.email,
           req.user.name || "Customer",
           code,
           amount,
           recipientName,
           toAccount,
-        )
-        .catch((err) => {
-          console.warn("Could not dispatch OTP email:", err.message);
+        );
+      } catch (err) {
+        console.error("Could not dispatch OTP email:", err.message);
+        return res.status(500).json({
+          message: `Unable to send OTP verification email: ${err.message}`,
         });
+      }
     }
 
     return res.status(200).json({

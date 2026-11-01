@@ -55,8 +55,9 @@ if (transporter) {
 // Function to send email safely
 const sendEmail = async (to, subject, text, html) => {
   if (!transporter) {
-    console.warn(`⚠️ Cannot send email to ${to}: Email transporter is not initialized. Check EMAIL_USER and EMAIL_PASS on your server.`);
-    return;
+    const errorMsg = `Email transporter is not initialized. Please check EMAIL_USER and EMAIL_PASS on your server.`;
+    console.warn(`⚠️ Cannot send email to ${to}: ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
   try {
@@ -69,8 +70,10 @@ const sendEmail = async (to, subject, text, html) => {
     });
 
     console.log("📧 Email successfully dispatched to %s: %s", to, info.messageId);
+    return info;
   } catch (error) {
     console.error("❌ Error sending email to %s:", to, error.message);
+    throw error;
   }
 };
 

@@ -53,10 +53,12 @@ async function userRegisterController(req, res, next) {
 
     res.cookie("token", token, COOKIE_OPTIONS);
 
-    // Send welcome email asynchronously without blocking response
-    emailService.sendRegistrationEmail(user.email, user.name).catch((err) => {
+    // Send welcome email and await socket completion
+    try {
+      await emailService.sendRegistrationEmail(user.email, user.name);
+    } catch (err) {
       console.error("Welcome email failed to send:", err.message);
-    });
+    }
 
     return res.status(201).json({
       message: "User registered successfully",
