@@ -508,6 +508,18 @@ async function requestTransferOtp(req, res, next) {
       });
     }
 
+    // Guard against rapid duplicate clicks within 4 seconds
+    const recentOtp = await otpModel.findOne({
+      userId: req.user._id,
+      createdAt: { $gt: new Date(Date.now() - 4000) },
+    });
+    if (recentOtp) {
+      return res.status(429).json({
+        message:
+          "A verification code was just sent. Please wait a few seconds before requesting another.",
+      });
+    }
+
     // Generate 6-digit numeric OTP
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 1 * 60 * 1000); // 1 minute validity

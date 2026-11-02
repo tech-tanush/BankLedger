@@ -38,6 +38,7 @@ export default function TransferModal({
   const [otpSecondsLeft, setOtpSecondsLeft] = useState(60);
   const [isResending, setIsResending] = useState(false);
   const [resendFeedback, setResendFeedback] = useState("");
+  const [otpRequestLoading, setOtpRequestLoading] = useState(false);
 
   // Recipient Lookup State
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -103,6 +104,7 @@ export default function TransferModal({
     setOtpSecondsLeft(60);
     setIsResending(false);
     setResendFeedback("");
+    setOtpRequestLoading(false);
   };
 
   useEffect(() => {
@@ -169,7 +171,9 @@ export default function TransferModal({
 
     // High-value transfer threshold (₹50,000+) requires 2FA OTP
     if (numAmount >= 50000) {
+      if (otpRequestLoading) return; // Prevent double-clicking
       try {
+        setOtpRequestLoading(true);
         setError("");
         await API.post("/api/transactions/request-otp", {
           amount: numAmount,
@@ -182,6 +186,8 @@ export default function TransferModal({
             err.message ||
             "Failed to request security verification code"
         );
+      } finally {
+        setOtpRequestLoading(false);
       }
       return;
     }
@@ -496,16 +502,40 @@ export default function TransferModal({
                 </div>
               </div>
 
+              {/* High-Value 2FA Loading Animation Banner */}
+              {otpRequestLoading && (
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs flex items-center justify-center gap-2 animate-pulse">
+                  <KeyRound className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="font-semibold tracking-wide">
+                    Authorizing high-value transfer & dispatching security OTP...
+                  </span>
+                </div>
+              )}
+
               <button
                 type="submit"
-                className="w-full mt-2 py-3 rounded-xl font-semibold text-xs tracking-wide theme-btn-gradient text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={otpRequestLoading || lookupLoading}
+                className={`w-full mt-2 py-3 rounded-xl font-semibold text-xs tracking-wide theme-btn-gradient text-white shadow-xs transition-all flex items-center justify-center gap-2 ${
+                  otpRequestLoading || lookupLoading
+                    ? "opacity-75 cursor-not-allowed pointer-events-none"
+                    : "cursor-pointer hover:opacity-95"
+                }`}
               >
-                <Send className="h-4 w-4" />
-                <span>
-                  {Number(amount) >= 50000
-                    ? "Verify with Security OTP (₹50k+)"
-                    : "Confirm & Transfer"}
-                </span>
+                {otpRequestLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span>Dispatching 2FA Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    <span>
+                      {Number(amount) >= 50000
+                        ? "Verify with Security OTP (₹50k+)"
+                        : "Confirm & Transfer"}
+                    </span>
+                  </>
+                )}
               </button>
             </form>
           )}
